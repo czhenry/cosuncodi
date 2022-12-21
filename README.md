@@ -1,30 +1,52 @@
 # cosuncodi
 CoSuNCoDi v0.0.1 
+
 cosuncodi
 
+
 Compactly Supported N-times Continuously Differentiable Piecewise Polynomial Basis using 
+
 the Julia programming language
 
-This library includes data structures
+
+This library includes:
+
+1.  data structures:
+
 element
+
 collection
+
 spectrum
 
-element constructors
+
+2.  element constructors:
+
 u
+
 v
+
 w
 
-basis collection constructors
+
+and 3.  basis collection constructors
+
 uBasis
+
 vBasis
 
+
 using which one can represent piecewise polynomials by specifying their value and the value
+
 of their first N derivatives at each of the left and right end points of an interval.
 
+
 The element and collection data structures each have a spectrum that represents the Fourier
+
 Transform of it.
 
+
 This first version of the README.md file and code are expected to change.  This is just to 
+
 note the first *working* version of the code, before re-organizing it.
 
