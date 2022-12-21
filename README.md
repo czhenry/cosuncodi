@@ -29,11 +29,24 @@ v
 w
 
 
-and 3.  basis collection constructors
+3.  basis collection constructors
 
 uBasis
 
 vBasis
+
+
+and 4. functions to plot collections/elements and spectrums and to print strings in LaTeX
+
+plotSpectrum
+
+plotElement
+
+strSpectrum
+
+StrElement
+
+
 
 
 using which one can represent piecewise polynomials by specifying their value and the value
