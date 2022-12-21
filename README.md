@@ -1,12 +1,18 @@
 # cosuncodi
 CoSuNCoDi v0.0.1 
 
-cosuncodi
-
-
 Compactly Supported N-times Continuously Differentiable Piecewise Polynomial Basis using 
 
 the Julia programming language
+
+
+usage:
+
+<code> julia -i element.jl </code>
+
+or in scripts
+
+<code> include("element.jl") </code>
 
 
 This library includes:
