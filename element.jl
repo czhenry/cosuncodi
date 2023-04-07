@@ -19,7 +19,7 @@ end
 
 nullSpectrum=spectrum([])
 
-# the element struct stores information about a polynomial of degree at most 2N+2
+# the element struct stores information about a polynomial of degree at most 2N+1
 # on (shift, shift+a) by knowing its value and N derivatives at the left and right
 # end points
 
@@ -700,7 +700,7 @@ function getBounds(this::Union{collection,element}, lowt, hight)
         end
     end
 end
-            
+
 function plotElement(this::Union{collection,element})
     # hardcoded points per unit interval until later
     ppui = 50
