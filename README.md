@@ -8,11 +8,11 @@ the Julia programming language
 
 usage:
 
-<code> julia -i element.jl </code>
+<code> julia -i cosuncodi.jl </code>
 
 or in scripts
 
-<code> include("element.jl") </code>
+<code> include("cosuncodi.jl") </code>
 
 
 This library includes:
@@ -65,7 +65,4 @@ The element and collection data structures each have a spectrum that represents 
 Transform of it.
 
 
-This first version of the README.md file and code are expected to change.  This is just to 
-
-note the first *working* version of the code, before re-organizing it.
 
