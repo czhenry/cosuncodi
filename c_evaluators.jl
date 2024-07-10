@@ -1,4 +1,5 @@
 export evaluate, evalSpectrum
+export evalDer
 
 # add argument to evaluate from left or from right (when at end points)
 
@@ -34,9 +35,89 @@ function evaluate(this::Union{collection,element}, t)
     end
     return 0
 end
+
 # add function evalDer to get derivative N of collection at a point
 #  from left or from right with an (optional?) argument
-#  if not specified, choose a direction, print error if left/right do not match
+
+function doNthDer(this::element, t, N)
+    if N < 0
+        print("error: evalDer does not do derivatives with N<0\n")
+        return 0
+    elseif N == 0
+        return evalpoly(t-this.shift, this.n)
+    else
+        derPoly = deepcopy(this.n)
+        # note to avoid read after write errors order from left to right
+        for i in 1:N
+            for j in 2:(2*this.N+2)
+                derPoly[j-1]=(j-1)*derPoly[j]
+            end
+            derPoly[2*this.N+2] = 0
+        end
+        return evalpoly(t-this.shift, derPoly)
+    end
+end
+
+function evalDer(this::Union{collection,element}, t, N=1, dir='r')
+    if typeof(this) == element
+        if this.sym == 'n'
+            if (this.shift < t < this.shift+this.a)
+                # we're inside an open set, direction doesn't matter
+                return doNthDer(this, t, N)
+            elseif t == this.shift
+                return (dir == 'r' ) ? doNthDer(this, t, N) : 0
+            elseif t == this.shift+this.a
+                return (dir == 'l' ) ? doNthDer(this, t, N) : 0
+            else
+                return 0
+            end
+        else
+            # We must be symmetric
+            if (this.shift < t < this.shift+this.a)
+                return doNthDer(this, t, N)
+            elseif (this.shift-this.a < t < this.shift)
+                if this.sym == 'e'
+                    return (iseven(N) ? 1 : -1)*conj(doNthDer(this, t, N))
+                elseif this.sym == 'o'
+                    return (isodd(N) ? 1 : -1)*conj(doNthDer(this, t, N))
+                end
+            elseif t == this.shift+this.a
+                return (dir == 'l' ) ? doNthDer(this, t, N) : 0
+            elseif t == this.shift-this.a
+                if dir == 'r'
+                    if this.sym == 'e'
+                        return (iseven(N) ? 1 : -1)*conj(doNthDer(this, t, N))
+                    elseif this.sym == 'o'
+                        return (isodd(N) ? 1 : -1)*conj(doNthDer(this, t, N))
+                    end
+                else
+                    return 0
+                end
+            elseif t == this.shift
+                if dir == 'r'
+                    return doNthDer(this, t, N)
+                else
+                    if this.sym == 'e'
+                        return (iseven(N) ? 1 : -1)*conj(doNthDer(this, t, N))
+                    elseif this.sym == 'o'
+                        return (isodd(N) ? 1 : -1)*conj(doNthDer(this, t, N))
+                    end
+                end
+            else
+                return 0
+            end
+        end
+    end
+    if typeof(this) == collection
+        result = 0
+        for el in this.elements
+            result+=evalDer(el, t, N, dir)
+        end
+        return result
+    end
+    return 0
+end
+
 
 
 function evalSpectrum(this::Union{collection,element}, w)

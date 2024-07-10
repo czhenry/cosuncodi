@@ -3,6 +3,7 @@
 
 export spectralTerm, nullTerm, spectrum, nullSpectrum, element, collection
 export nullCollection, sumSpectrums, reduceSpectrum, constructSpectrum
+export sumOfElements, sumTwoElements, addToDict, scalarMultiply, scalarMultiplyByReference
 
 mutable struct spectralTerm
     wDeg              # terms appear as coefficients of 1/(w)^N
@@ -20,7 +21,7 @@ mutable struct spectrum
     terms::Vector{spectralTerm}
 end
 
-nullSpectrum=spectrum([])
+nullSpectrum=spectrum(Vector{spectralTerm}())
 
 # the element struct stores information about a polynomial of degree at most 2N+1
 # on (shift, shift+a) by knowing its value and N derivatives at the left and right
@@ -50,13 +51,10 @@ end
 
 mutable struct collection
     elements::Vector{Union{collection,element}}
-    pointsOfContinuity
-    N
-    sum
     spec::spectrum
 end
 
-nullCollection=collection([], 0, 0, 0, deepcopy(nullSpectrum))
+nullCollection=collection(Vector{element}(), deepcopy(nullSpectrum))
 
 # the sumSpectrums function will add terms of the 2nd spectrum
 # into the first one, and return it
@@ -79,9 +77,11 @@ function sumSpectrums(spec1::spectrum, spec2::spectrum)
         found = false
         index = 0
         for i in 1:length(spec1.terms)
-            if (spec1.terms[i].wDeg == term.wDeg) && (spec1.terms[i].a == term.a) && (spec1.terms[i].shift == term.shift)
-                found = true
-                index=i
+            if (spec1.terms[i].wDeg == term.wDeg) && (spec1.terms[i].shift == term.shift)
+                if (spec1.terms[i].a == term.a) || ((term.eiwCoeff == 0) && (term.sinCoeff == 0) && (term.cosCoeff == 0))
+                    found = true
+                    index=i
+                end
             end
         end
         if found
@@ -177,4 +177,144 @@ function constructSpectrum(this::Union{collection,element})
         end
 
     end
+end
+
+# scalar multiply on elements or collections
+# two versions: one pass by reference, performs multiplication, returns nothing
+#   one pass by value, creates copy, calls pass by reference, returns copy
+
+function scalarMultiplyByReference(this::Union{collection,element}, s)
+    if typeof(this) == collection
+        for el in this.elements
+            scalarMultiplyByReference(el, s)
+        end
+    elseif typeof(this) == element
+        this.u *= s
+        this.v *= s
+        this.h *= s
+        this.k *= s
+        this.c *= s
+        this.c_hat *= s
+        this.n *= s
+        for term in this.spec.terms
+            term.coeff *= s
+            term.eiwCoeff *= s
+            term.cosCoeff *= s
+            term.sinCoeff *= s
+        end
+    end
+end
+
+function scalarMultiply(this::Union{collection,element}, s)
+    result=deepcopy(this)
+    scalarMultiplyByReference(result, s)
+    result
+end
+
+# Yikes... the data types for sumOfElements are difficult
+# It needs to sort all the elements by numType, N, a, shift, sym
+# and only add them together if they match all types
+# so, I'll create Dictionaries to do the sorting and create vectors for holding
+# the elements of the same type
+#  Then, sum over elements of each type.  If there is only one type, return element
+#  Otherwise, return collection
+
+function addToDict(this::Union{collection,element}, parameterDict)
+    if typeof(this) == collection
+        for el in this.elements
+            addToDict(el, parameterDict)
+        end
+    elseif typeof(this) == element
+        if !haskey(parameterDict, this.numType)
+            push!(parameterDict, this.numType => Dict())
+        end
+        if !haskey(parameterDict[this.numType], this.N)
+            push!(parameterDict[this.numType], this.N => Dict())
+        end
+        if !haskey(parameterDict[this.numType][this.N], this.sym)
+            push!(parameterDict[this.numType][this.N], this.sym => Dict())
+        end
+        if !haskey(parameterDict[this.numType][this.N][this.sym], this.shift)
+            push!(parameterDict[this.numType][this.N][this.sym], this.shift => Dict())
+        end
+        if !haskey(parameterDict[this.numType][this.N][this.sym][this.shift], this.a)
+            push!(parameterDict[this.numType][this.N][this.sym][this.shift], this.a => Vector())
+        end
+        push!(parameterDict[this.numType][this.N][this.sym][this.shift][this.a], this)
+    end
+end
+
+#sumTwoElements is a function that passes by reference in the first argument
+#  and passes by value in the second argument, returns the first argument
+#  If desired to pass by value in both, use deepcopy() on the first argument
+# both must have the same values for numType, N, sym, shift, and a
+
+function sumTwoElements(el1::element, el2::element)
+    el1.u += el2.u
+    el1.v += el2.v
+    el1.h += el2.h
+    el1.k += el2.k
+    el1.c += el2.c
+    el1.c_hat += el2.c_hat
+    el1.n += el2.n
+    el1.spec.terms = Vector{spectralTerm}()
+    constructSpectrum(el1)
+    el1
+end
+
+
+function sumOfElements(this::Union{collection,element,Vector{element},Vector{collection}, Vector{Any},Vector{Union{collection,element}}})
+    parameterDict=Dict()
+    if typeof(this) == element
+        return deepcopy(this)
+    elseif typeof(this) == collection
+        addToDict(this, parameterDict)
+    else
+        for item in this
+            addToDict(item, parameterDict)
+        end
+    end
+
+    # if the elements can be combined into a single element, return an element
+    if parameterDict.count == 1
+        keyType=iterate(keys(parameterDict))[1]
+        if parameterDict[keyType].count == 1
+            keyN=iterate(keys(parameterDict[keyType]))[1]
+            if parameterDict[keyType][keyN].count == 1
+                keySym=iterate(keys(parameterDict[keyType][keyN]))[1]
+                if parameterDict[keyType][keyN][keySym].count == 1
+                    keyShift=iterate(keys(parameterDict[keyType][keyN][keySym]))[1]
+                    if parameterDict[keyType][keyN][keySym][keyShift].count == 1
+                        keyA=iterate(keys(parameterDict[keyType][keyN][keySym][keyShift]))[1]
+                        result = deepcopy(parameterDict[keyType][keyN][keySym][keyShift][keyA][1])
+                        for i in 2:length(parameterDict[keyType][keyN][keySym][keyShift][keyA])
+                            sumTwoElements(result, parameterDict[keyType][keyN][keySym][keyShift][keyA][i])
+                        end
+                        return result
+                    end
+                end
+            end
+        end
+    end
+
+    # if the elements have different values of a, N, shift, etc, return collection
+    result = deepcopy(nullCollection)
+
+    for keyType in keys(parameterDict)
+        for keyN in keys(parameterDict[keyType])
+            for keySym in keys(parameterDict[keyType][keyN])
+                for keyShift in keys(parameterDict[keyType][keyN][keySym])
+                    for keyA in keys(parameterDict[keyType][keyN][keySym][keyShift])
+                        tempElement = deepcopy(parameterDict[keyType][keyN][keySym][keyShift][keyA][1])
+                        for i in 2:length(parameterDict[keyType][keyN][keySym][keyShift][keyA])
+                            sumTwoElements(tempElement, parameterDict[keyType][keyN][keySym][keyShift][keyA][i])
+                        end
+                        push!(result.elements, deepcopy(tempElement))
+                    end
+                end
+            end
+        end
+    end
+    constructSpectrum(result)
+    result
 end
