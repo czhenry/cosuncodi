@@ -1,0 +1,48 @@
+# generate a vector of central divided difference coefficients
+
+function centralDividedDiff(N)
+    Z=zeros(Rational{BigInt}, N, N)
+    y=zeros(Rational{BigInt}, N)
+    y[1]=-1//2
+    for j in big(1):big(N)
+        for i in big(1):big(N)
+            Z[i,j] = j^(2*i-1)
+        end
+    end
+    return Z\y
+end
+
+"""
+    cdd = centralDividedDiff(N)
+    for i in 1:N
+        for j in (2*i+1):(2*(N+1))
+            constraints[i+N+2,j] = evalDer(elements[j], i)
+        end
+        rhs[i+N+2]=cdd[i]
+    end
+"""
+
+"""
+#  Unused function written for taking derivative of spectrum at w=0
+function evalSpectrumDerZero(this::Union{collection,element})
+    if typeof(this) == element
+        result = big(0)
+        for i in 0:(2*this.N+1)
+            result += -im*this.n[i+1]*this.a^(i+2)//(i+2)
+        end
+        if this.sym == 'e'
+            result += conj(result)
+        elseif this.sym == 'o'
+            result -= conj(result)
+        end
+        return result
+    end
+    if typeof(this) == collection
+        result = big(0)
+        for el in this.elements
+            result += evalSpectrumDerZero(el)
+        end
+        return result
+    end
+end
+"""
